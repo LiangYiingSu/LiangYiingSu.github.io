@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我們的回憶測驗</title>
+    <script>
+        let correctAnswers = ["B", "C", "A", "C", "C"];
+        let webhookURL = "https://script.google.com/macros/s/AKfycbyJMAhXwNywMcto5to0pwRvXX-osn1YBIKlZK5ae4CozZcD8huXo8lJHH1kWxLMwJmL6w/exec";
+        let leaderboardURL = "https://script.google.com/macros/s/AKfycbyJMAhXwNywMcto5to0pwRvXX-osn1YBIKlZK5ae4CozZcD8huXo8lJHH1kWxLMwJmL6w/exec";
+
+        function checkAnswers() {
+            let username = prompt("請輸入你的姓名：");
+            if (!username) {
+                alert("請輸入姓名！");
+                return;
+            }
+
+            let score = 0;
+            let userAnswers = [];
+            let startTime = performance.now(); // 記錄開始時間
+
+            for (let i = 1; i <= 5; i++) {
+                let selected = document.querySelector(`input[name='q${i}']:checked`);
+                if (selected) {
+                    userAnswers.push(selected.value);
+                    if (selected.value === correctAnswers[i - 1]) {
+                        score++;
+                    }
+                } else {
+                    alert(`請回答第 ${i} 題！`);
+                    return;
+                }
+            }
+
+            let endTime = performance.now();
+            let timeTaken = ((endTime - startTime) / 1000).toFixed(2); // 轉換成秒數，保留兩位小數
+
+            alert(`你的分數是: ${score}/5，耗時 ${timeTaken} 秒`);
+            sendDataToGoogleSheets(username, score, timeTaken);
+        }
+
+        function sendDataToGoogleSheets(name, score, time) {
+            console.log("發送數據至 Google Apps Script：", name, score, time);
+            fetch(webhookURL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: name, score: score, time: time })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("成功發送資料", data);
+                updateLeaderboard();
+            })
+            .catch(error => console.error("發送失敗", error));
+        }
+
+        function updateLeaderboard() {
+            fetch(leaderboardURL, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                let leaderboardHtml = "<ol>";
+                data.forEach((entry, index) => {
+                    leaderboardHtml += `<li>${index + 1}. ${entry[0]}: ${entry[1]} 分，耗時 ${entry[2]} 秒</li>`;
+                });
+                leaderboardHtml += "</ol>";
+                document.getElementById("leaderboard").innerHTML = leaderboardHtml;
+            })
+            .catch(error => console.error("無法獲取排行榜", error));
+        }
+        
+        window.onload = updateLeaderboard; // 頁面加載時更新排行榜
+    </script>
+</head>
+<body>
+    <h2>我們的回憶測驗</h2>
+    <form>
+        <p>1. 二人在一起的年份</p>
+        <input type="radio" name="q1" value="A"> A. 2013<br>
+        <input type="radio" name="q1" value="B"> B. 2014<br>
+        <input type="radio" name="q1" value="C"> C. 2015<br>
+        
+        <p>2. 初次相遇的地方</p>
+        <input type="radio" name="q2" value="A"> A. 課室<br>
+        <input type="radio" name="q2" value="B"> B. 餐廳<br>
+        <input type="radio" name="q2" value="C"> C. 羽毛球場<br>
+        
+        <p>3. 女方第一次收男方的禮物</p>
+        <input type="radio" name="q3" value="A"> A. 巧克力<br>
+        <input type="radio" name="q3" value="B"> B. 耳環<br>
+        <input type="radio" name="q3" value="C"> C. 包包<br>
+        
+        <p>4. 以下哪些不是男方為女方做過的事</p>
+        <input type="radio" name="q4" value="A"> A. 晚上從台北坐高鐵到台中為她慶生<br>
+        <input type="radio" name="q4" value="B"> B. 做空姐時候，買機票飛香港陪她訓練<br>
+        <input type="radio" name="q4" value="C"> C. 在餐廳下跪求婚<br>
+        
+        <p>5. 在台灣登記結婚的日子</p>
+        <input type="radio" name="q5" value="A"> A. 2024 Jan 9<br>
+        <input type="radio" name="q5" value="B"> B. 2024 Jun 13<br>
+        <input type="radio" name="q5" value="C"> C. 2024 Oct 29<br>
+        
+        <br>
+        <button type="button" onclick="checkAnswers()">提交答案</button>
+    </form>
+    
+    <h3>排行榜 (前 3 名)</h3>
+    <div id="leaderboard"><ol></ol></div>
+</body>
+</html>
